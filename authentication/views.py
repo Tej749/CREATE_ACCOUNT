@@ -1,10 +1,17 @@
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import send_mail
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
+from django.template.loader import render_to_string
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+
 from org import settings
+from django.contrib.sites.shortcuts import get_current_site
+from django.template.loader import render_to_string
 
 
 # Create your views here.
@@ -39,9 +46,10 @@ def signup(request):
         myuser = User.objects.create_user(username, email, pass1)
         myuser.first_name = fname
         myuser.last_name = lname
+        myuser.is_active = False
         myuser.save()
 
-        messages.success(request, "your account successfully created...")
+        messages.success(request, "your account successfully created... we have sent you a confirmation email, please confirm your email in order to activate your account..!")
 
         # welcome email
         subject = "welcome to org - Django Login.."
@@ -49,6 +57,16 @@ def signup(request):
         from_email = settings.EMAIL_HOST_USER
         to_list = [myuser.email]
         send_mail(subject, message, from_email, to_list, fail_silently=True)
+
+        # Email Address Confirmation Email
+
+        current_site = get_current_site(request)
+        email_subject = 'confirm your email @ org -Django Login!'
+        message2 = render_to_string('email_confirmation.html'), {
+            'name':myuser.first_name,
+            'domain': current_site.domain,
+            'uid': urlsafe_base64_encode(force_bytes(myuser.pk)),
+        }
 
         return redirect("signin")
     return render(request, "authentication/signup.html")
